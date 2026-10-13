@@ -1,0 +1,7 @@
+{
+  "name": "study-plan-generator",
+  "version": "1.0.0",
+  "description": "基于 Node.js 的学习计划生成器",
+  "private": true,
+  "scripts": { "start": "node server.js" }
+}

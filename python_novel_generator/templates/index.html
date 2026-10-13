@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 小说生成器</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif; }
+    body { margin: 0; color: #172033; background: #f3f6fb; }
+    main { width: min(980px, calc(100% - 32px)); margin: 42px auto; }
+    .hero { padding: 28px 0 20px; } h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 48px); } .hero p { color: #60708a; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+    .panel { background: #fff; border: 1px solid #dde4ef; border-radius: 10px; padding: 22px; box-shadow: 0 8px 25px #21365d0d; }
+    label { display: block; font-size: 14px; font-weight: 700; margin: 0 0 7px; } input, select { width: 100%; box-sizing: border-box; border: 1px solid #ccd6e5; border-radius: 6px; padding: 11px; margin-bottom: 16px; font: inherit; }
+    button { width: 100%; border: 0; border-radius: 6px; padding: 12px; background: #2563eb; color: white; font-weight: 700; cursor: pointer; } button:disabled { opacity: .6; cursor: wait; }
+    .result h2 { margin-top: 0; } .meta { color: #64748b; font-size: 14px; } .story p { line-height: 1.9; text-indent: 2em; } .empty { color: #75839b; padding: 50px 0; text-align: center; }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } main { margin-top: 18px; } }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero"><h1>AI 小说生成器</h1><p>输入几个关键词，快速生成一篇有情节的短篇小说。</p></section>
+  <div class="layout">
+    <form class="panel" id="form">
+      <label for="topic">故事主题</label><input id="topic" value="会发光的旧城市" maxlength="40" required>
+      <label for="genre">故事类型</label><select id="genre"><option>科幻</option><option>悬疑</option><option>奇幻</option><option>校园</option></select>
+      <label for="protagonist">主角名字</label><input id="protagonist" value="林墨" maxlength="20" required>
+      <label for="length">段落数量</label><input id="length" type="number" min="3" max="8" value="5">
+      <button id="submit">生成小说</button>
+    </form>
+    <article class="panel result" id="result"><div class="empty">点击左侧按钮开始创作</div></article>
+  </div>
+</main>
+<script>
+  const form = document.querySelector('#form'); const result = document.querySelector('#result'); const button = document.querySelector('#submit');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault(); button.disabled = true; button.textContent = '正在生成...';
+    const payload = { topic: topic.value, genre: genre.value, protagonist: protagonist.value, length: length.value };
+    try { const response = await fetch('/api/generate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const data = await response.json();
+      if (!response.ok) throw new Error(data.error); result.innerHTML = `<h2>${data.title}</h2><div class="meta">类型：${data.genre} · 字数：约 ${data.wordCount} 字</div><div class="story">${data.paragraphs.map(p => `<p>${p}</p>`).join('')}</div>`;
+    } catch (error) { result.innerHTML = `<div class="empty">生成失败：${error.message}</div>`; } finally { button.disabled = false; button.textContent = '生成小说'; }
+  });
+</script>
+</body>
+</html>
