@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>学习计划生成器</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif; color: #1d2939; } body { margin: 0; background: #f7f8fa; }
+    main { width: min(1000px, calc(100% - 32px)); margin: 42px auto; } h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 46px); } .lead { color: #667085; margin-bottom: 26px; }
+    .layout { display: grid; grid-template-columns: 290px 1fr; gap: 20px; align-items: start; } .panel { background: white; border: 1px solid #e4e7ec; border-radius: 10px; padding: 22px; }
+    label { display: block; font-weight: 700; font-size: 14px; margin-bottom: 7px; } input, select { width: 100%; box-sizing: border-box; padding: 11px; border: 1px solid #d0d5dd; border-radius: 6px; margin-bottom: 16px; font: inherit; } button { width: 100%; padding: 12px; border: 0; border-radius: 6px; color: #fff; background: #0f766e; font-weight: 700; cursor: pointer; } button:disabled { opacity: .6; }
+    .summary { border-bottom: 1px solid #eaecf0; padding-bottom: 16px; margin-bottom: 16px; } .summary h2 { margin: 0 0 7px; font-size: 21px; } .summary p { color: #667085; margin: 5px 0; } .tip { background: #ecfdf3; color: #166534; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+    .day { display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; padding: 15px 0; border-bottom: 1px solid #f0f1f3; align-items: start; } .day:last-child { border: 0; } .number { color: #0f766e; font-weight: 800; } .day h3 { margin: 0 0 5px; font-size: 16px; } .day p { margin: 4px 0; line-height: 1.55; } .duration { color: #667085; font-size: 13px; white-space: nowrap; }
+    .empty { color: #98a2b3; text-align: center; padding: 60px 0; } @media(max-width:700px) { .layout { grid-template-columns: 1fr; } main { margin-top: 20px; } .day { grid-template-columns: 45px 1fr; } .duration { grid-column: 2; } }
+  </style>
+</head>
+<body><main><h1>学习计划生成器</h1><p class="lead">把一个大目标拆成每天都能完成的小任务。</p>
+  <div class="layout"><form class="panel" id="form"><label for="goal">学习目标</label><input id="goal" value="掌握 JavaScript 基础" maxlength="60" required><label for="level">当前水平</label><select id="level"><option>零基础</option><option>有一点基础</option><option>有项目经验</option></select><label for="days">学习天数</label><input id="days" type="number" value="7" min="3" max="30"><label for="minutes">每天分钟数</label><input id="minutes" type="number" value="60" min="15" max="480"><button id="submit">生成学习计划</button></form>
+  <section class="panel" id="result"><div class="empty">填写目标后生成你的专属计划</div></section></div></main>
+<script>
+  const form = document.querySelector('#form'), result = document.querySelector('#result'), button = document.querySelector('#submit');
+  const modules = [
+    { name: '目标拆解', type: '理解', task: goal => `梳理“${goal}”的基础概念，列出需要掌握的关键词` },
+    { name: '资料整理', type: '整理', task: goal => `收集 ${goal} 的入门资料，完成一份知识地图` },
+    { name: '动手练习', type: '实践', task: goal => `围绕 ${goal} 完成一个最小练习项目` },
+    { name: '复盘输出', type: '复盘', task: goal => `用自己的话总结 ${goal}，并记录三个待解决问题` },
+    { name: '成果展示', type: '展示', task: goal => `完善 ${goal} 的练习成果，准备一次五分钟分享` }
+  ];
+  const clean = (value, fallback, max = 80) => String(value || '').replace(/[<>]/g, '').trim().slice(0, max) || fallback;
+  function makePlan(input) {
+    const goal = clean(input.goal, 'JavaScript 基础');
+    const level = clean(input.level, '零基础', 20);
+    const days = Math.max(3, Math.min(30, Number.parseInt(input.days, 10) || 7));
+    const minutes = Math.max(15, Math.min(480, Number.parseInt(input.minutes, 10) || 60));
+    const plan = Array.from({ length: days }, (_, index) => {
+      const item = modules[index % modules.length];
+      return { day: index + 1, title: item.name, type: item.type, task: item.task(goal), duration: minutes,
+        review: index > 0 ? '最后用 10 分钟复习昨天的笔记。' : '先建立学习记录，写下今天的疑问。' };
+    });
+    return { goal, level, days, minutes, plan, tip: `以${level}身份学习时，保持每天完成一个小成果，比一次安排过多内容更有效。` };
+  }
+  function renderPlan(data) {
+    result.innerHTML = `<div class="summary"><h2>${data.goal}</h2><p>${data.level} · ${data.days} 天 · 每天 ${data.minutes} 分钟</p></div><div class="tip">${data.tip}</div>${data.plan.map(item => `<div class="day"><div class="number">DAY ${item.day}</div><div><h3>${item.title} · ${item.type}</h3><p>${item.task}</p><p>${item.review}</p></div><div class="duration">${item.duration} 分钟</div></div>`).join('')}`;
+  }
+  form.addEventListener('submit', async event => { event.preventDefault(); button.disabled = true; button.textContent = '正在生成...';
+    try {
+      const input = { goal: goal.value, level: level.value, days: days.value, minutes: minutes.value };
+      let data;
+      try {
+        const response = await fetch('/api/plan', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(input) });
+        if (!response.ok) throw new Error('静态部署');
+        data = await response.json();
+      } catch { data = makePlan(input); }
+      renderPlan(data);
+    } catch (error) { result.innerHTML = `<div class="empty">生成失败：${error.message}</div>`; } finally { button.disabled = false; button.textContent = '生成学习计划'; }
+  });
+  if (new URLSearchParams(location.search).get('demo') === '1') {
+    goal.value = '掌握 MCP 基础'; level.value = '零基础'; days.value = '5'; minutes.value = '45'; form.requestSubmit();
+  }
+</script></body></html>

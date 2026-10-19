@@ -1,0 +1,6 @@
+.localappdata/
+.npm-cache/
+.playwright-browsers/
+output/
+node_study_planner/server.log
+node_study_planner/server.err.log
